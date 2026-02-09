@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
 
   if (!clientId || !clientSecret) {
     res.statusCode = 500;
-    res.end('Error: Missing GITHUB_OAUTH env vars. clientId=' + (clientId ? 'set' : 'missing') + ' clientSecret=' + (clientSecret ? 'set' : 'missing'));
+    res.end('Error: Missing env vars. clientId=' + (clientId ? 'set' : 'missing') + ' clientSecret=' + (clientSecret ? 'set' : 'missing'));
     return;
   }
 
@@ -30,7 +30,16 @@ module.exports = async function handler(req, res) {
       }),
     });
 
-    var data = await response.json();
+    var rawBody = await response.text();
+
+    var data;
+    try {
+      data = JSON.parse(rawBody);
+    } catch (parseErr) {
+      res.statusCode = 500;
+      res.end('GitHub returned non-JSON (status ' + response.status + '): ' + rawBody.substring(0, 500));
+      return;
+    }
 
     if (data.error) {
       res.statusCode = 401;
@@ -67,6 +76,6 @@ module.exports = async function handler(req, res) {
     res.end(html);
   } catch (err) {
     res.statusCode = 500;
-    res.end('OAuth token exchange failed: ' + (err.message || String(err)));
+    res.end('OAuth exchange error: ' + (err.message || String(err)));
   }
 };
