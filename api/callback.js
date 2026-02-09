@@ -1,52 +1,72 @@
-export default async function handler(req, res) {
-  const { code } = req.query;
+module.exports = async function handler(req, res) {
+  var code = req.query.code;
 
   if (!code) {
-    return res.status(400).send('Missing code parameter');
+    res.statusCode = 400;
+    res.end('Missing code parameter');
+    return;
+  }
+
+  var clientId = process.env.GITHUB_OAUTH_CLIENT_ID;
+  var clientSecret = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    res.statusCode = 500;
+    res.end('Error: Missing GITHUB_OAUTH env vars. clientId=' + (clientId ? 'set' : 'missing') + ' clientSecret=' + (clientSecret ? 'set' : 'missing'));
+    return;
   }
 
   try {
-    const response = await fetch('https://github.com/login/oauth/access_token', {
+    var response = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        client_id: process.env.GITHUB_OAUTH_CLIENT_ID,
-        client_secret: process.env.GITHUB_OAUTH_CLIENT_SECRET,
-        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
       }),
     });
 
-    const data = await response.json();
+    var data = await response.json();
 
     if (data.error) {
-      return res.status(401).send(`Auth error: ${data.error_description || data.error}`);
+      res.statusCode = 401;
+      res.end('Auth error: ' + (data.error_description || data.error));
+      return;
     }
 
-    const token = data.access_token;
-    const provider = 'github';
+    var token = data.access_token;
 
-    // Send token back to CMS via postMessage
+    if (!token) {
+      res.statusCode = 500;
+      res.end('No access_token in response: ' + JSON.stringify(data));
+      return;
+    }
+
+    var html = [
+      '<!doctype html><html><body><script>',
+      '(function() {',
+      '  var token = "' + token + '";',
+      '  var provider = "github";',
+      '  var payload = JSON.stringify({ token: token, provider: provider });',
+      '  var msg = "authorization:" + provider + ":success:" + payload;',
+      '  if (window.opener) {',
+      '    window.opener.postMessage(msg, "*");',
+      '    setTimeout(function() { window.close(); }, 500);',
+      '  } else {',
+      '    document.body.innerHTML = "<p>Auth successful! You can close this window.</p>";',
+      '  }',
+      '})();',
+      '</script></body></html>'
+    ].join('\n');
+
     res.setHeader('Content-Type', 'text/html');
-    res.send(`<!doctype html>
-<html>
-<body>
-<script>
-(function() {
-  var token = "${token}";
-  var provider = "${provider}";
-  var msg = "authorization:" + provider + ":success:" + JSON.stringify({token: token, provider: provider});
-  if (window.opener) {
-    window.opener.postMessage(msg, "*");
-    window.close();
-  }
-})();
-</script>
-</body>
-</html>`);
+    res.end(html);
   } catch (err) {
-    res.status(500).send('OAuth token exchange failed');
+    res.statusCode = 500;
+    res.end('OAuth token exchange failed: ' + (err.message || String(err)));
   }
-}
+};
