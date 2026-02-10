@@ -1,0 +1,24 @@
+{
+  "name": "occurance",
+  "version": "1.0.0",
+  "description": "Simplica is content focused, minimal theme for Hugo. The theme is perfectly suitable for writers. No JS! AAA, 100/100 scores on Lighthouse, Gmetrix and Webpagetest!",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oreo-agi/occurance.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/oreo-agi/occurance/issues"
+  },
+  "homepage": "https://github.com/oreo-agi/occurance#readme",
+  "dependencies": {
+    "@vercel/og": "^0.8.6"
+  }
+}
